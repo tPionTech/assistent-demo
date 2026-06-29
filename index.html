@@ -4,7 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Demo – Digitaler Telefonassistent</title>
-  <script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.2.4/dist/vapi.umd.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js"
+    defer
+    async
+  ></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -13,9 +17,7 @@
     :root {
       --navy:   #1a2744;
       --navy2:  #243058;
-      --accent: #e8f0fe;
       --green:  #22c55e;
-      --red:    #ef4444;
       --text:   #f0f4ff;
       --muted:  #94a3b8;
     }
@@ -67,7 +69,6 @@
       margin-bottom: 36px;
     }
 
-    /* Pulsing ring */
     .ring-wrap {
       position: relative;
       width: 120px;
@@ -80,7 +81,6 @@
       inset: 0;
       border-radius: 50%;
       border: 2px solid rgba(255,255,255,0.12);
-      animation: none;
     }
 
     .ring.active {
@@ -112,11 +112,8 @@
 
     .mic-btn:hover { transform: scale(1.04); }
     .mic-btn:active { transform: scale(0.97); }
-
     .mic-btn svg { width: 44px; height: 44px; }
-
     .mic-btn.calling { background: linear-gradient(145deg, #166534, #14532d); }
-    .mic-btn.calling svg path, .mic-btn.calling svg rect { fill: #86efac; }
 
     .status {
       font-size: 13px;
@@ -168,6 +165,9 @@
       font-size: 12px;
       color: rgba(148,163,184,0.5);
     }
+
+    /* Hide the default Vapi widget button */
+    #vapi-support-btn { display: none !important; }
   </style>
 </head>
 <body>
@@ -179,7 +179,6 @@
   <div class="ring-wrap">
     <div class="ring" id="ring"></div>
     <button class="mic-btn" id="btn" onclick="toggleCall()" aria-label="Gespräch starten">
-      <!-- Microphone icon -->
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect x="9" y="2" width="6" height="12" rx="3" fill="#e0e8ff"/>
         <path d="M5 11a7 7 0 0 0 14 0" stroke="#e0e8ff" stroke-width="1.8" stroke-linecap="round" fill="none"/>
@@ -204,47 +203,54 @@
 
 <script>
   // ── KONFIGURATION ──────────────────────────────────────────────
-  const VAPI_PUBLIC_KEY  = "fd4becc0-551c-435e-8ffe-6209a42e7280";   // ← ersetzen
+  const VAPI_PUBLIC_KEY   = "fd4becc0-551c-435e-8ffe-6209a42e7280";    // ← ersetzen
   const VAPI_ASSISTANT_ID = "d7df9977-8b24-4d3c-83fc-9104eda7b85a"; // ← ersetzen
   // ──────────────────────────────────────────────────────────────
-
-  const vapi = new Vapi(VAPI_PUBLIC_KEY);
-  let active = false;
 
   const btn    = document.getElementById('btn');
   const status = document.getElementById('status');
   const ring   = document.getElementById('ring');
+  let active   = false;
+  let vapiInstance = null;
 
-  vapi.on('call-start', () => {
-    active = true;
-    btn.classList.add('calling');
-    ring.classList.add('active');
-    status.textContent = 'Verbunden – sprechen Sie jetzt';
-    status.classList.add('active');
-  });
+  window.addEventListener("load", () => {
+    vapiInstance = window.vapiSDK.run({
+      apiKey: VAPI_PUBLIC_KEY,
+      assistant: VAPI_ASSISTANT_ID,
+      config: { position: "bottom-right" },
+    });
 
-  vapi.on('call-end', () => {
-    active = false;
-    btn.classList.remove('calling');
-    ring.classList.remove('active');
-    status.textContent = 'Gespräch beendet';
-    status.classList.remove('active');
-  });
+    vapiInstance.on('call-start', () => {
+      active = true;
+      btn.classList.add('calling');
+      ring.classList.add('active');
+      status.textContent = 'Verbunden – sprechen Sie jetzt';
+      status.classList.add('active');
+    });
 
-  vapi.on('error', (e) => {
-    console.error(e);
-    status.textContent = 'Fehler – bitte erneut versuchen';
-    active = false;
-    btn.classList.remove('calling');
-    ring.classList.remove('active');
+    vapiInstance.on('call-end', () => {
+      active = false;
+      btn.classList.remove('calling');
+      ring.classList.remove('active');
+      status.textContent = 'Gespräch beendet';
+      status.classList.remove('active');
+    });
+
+    vapiInstance.on('error', () => {
+      status.textContent = 'Fehler – bitte erneut versuchen';
+      active = false;
+      btn.classList.remove('calling');
+      ring.classList.remove('active');
+    });
   });
 
   function toggleCall() {
+    if (!vapiInstance) return;
     if (!active) {
       status.textContent = 'Verbinde …';
-      vapi.start(VAPI_ASSISTANT_ID);
+      vapiInstance.start(VAPI_ASSISTANT_ID);
     } else {
-      vapi.stop();
+      vapiInstance.stop();
     }
   }
 </script>
